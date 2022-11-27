@@ -258,6 +258,9 @@ _bss_zero:
 	 * s7 -> HART Count
 	 * s8 -> HART Stack Size
 	 */
+	/*
+	 * HART Stack Size 默认值为 SBI_PLATFORM_DEFAULT_HART_STACK_SIZE = 8KB
+	 */
 	lla	a4, platform
 #if __riscv_xlen > 32
 	lwu	s7, SBI_PLATFORM_HART_COUNT_OFFSET(a4)
@@ -268,6 +271,17 @@ _bss_zero:
 #endif
 
 	/* Setup scratch space for all the HARTs*/
+	/*
+	 * s7 的值表示的是当前设备中 Hart 的数量
+	 * s8 的值表示的是一个 hart 的栈的大小 --> 8KB
+	 * +-------------+ --> _fw_start
+	 * |             |
+	 * +-------------+ --> _fw_end
+	 * | stack?      |
+	 * +-------------+ --> 这两块地方每个 hart 都有一份
+	 * | sbi_scratch |
+	 * +-------------+ <-- tp, t3
+	 */
 	lla	tp, _fw_end
 	mul	a5, s7, s8
 	add	tp, tp, a5
@@ -286,6 +300,9 @@ _scratch_init:
 	 * s7 -> HART count
 	 * s8 -> HART stack size
 	 */
+	/*
+	 * 初始化从底部往上初始化
+	 */
 	add	tp, t3, zero
 	mul	a5, s8, t1
 	sub	tp, tp, a5
@@ -294,6 +311,7 @@ _scratch_init:
 
 	/* Initialize scratch space */
 	/* Store fw_start and fw_size in scratch space */
+	/* fw_size 是包括 _fw_start 到 _fw_end 部分加上_fw_end 后面的各个 hart 的 scratch 部分 */
 	lla	a4, _fw_start
 	sub	a5, t3, a4
 	REG_S	a4, SBI_SCRATCH_FW_START_OFFSET(tp)
